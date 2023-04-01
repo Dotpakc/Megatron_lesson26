@@ -1,10 +1,13 @@
 import logging
+import json
 
 from decouple import config
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+
+from utils import load_users, save_users
 
 API_TOKEN = config('TG_API_KEY')
 
@@ -17,9 +20,7 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 # проблема: після перезапуску бота, дані змінюються на ті, що вказані в users = [ ... ], тобто вони не зберігаються
-users = [
-    {'id': 1, 'first_name': 'Ivan', 'last_name': 'Ivanov', 'username': 'ivanov', 'age':20, 'city': 'Kyiv', 'phone': '1234567890'},
-]
+users = load_users()
 
 #States for FSM
 class RegForm(StatesGroup):
@@ -89,6 +90,7 @@ async def process_phone_again(message: types.Message, state: FSMContext):
 async def process_phone_confirm(message: types.Message, state: FSMContext):
     data = await state.get_data()
     users.append(dict(id=message.from_user.id, username=message.from_user.username, **data))
+    save_users(users)
     await state.finish()
     await message.answer("Дякую, тепер ти зареєстрований", reply_markup=types.ReplyKeyboardRemove())
     await send_welcome(message)
